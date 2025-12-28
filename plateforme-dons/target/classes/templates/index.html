@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <section class="hero">
+            <h1>Donnez une seconde vie<br>à vos objets</h1>
+            <p style="font-size: 1.2rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 2rem;">
+                La plateforme communautaire du futur pour échanger, donner et recevoir. Simple, rapide et écologique.
+            </p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="/annonces" class="btn btn-primary">Voir les dons</a>
+                <a href="/annonces/new" class="btn btn-outline">Je donne</a>
+            </div>
+        </section>
+
+        <h2 class="text-center" style="margin-top: 4rem;">Derniers Entrants</h2>
+        <div class="grid">
+            <!-- Placeholder for latest items would go here -->
+            <div class="card">
+                <h3>Exemple d'objet</h3>
+                <p style="color: var(--text-muted);">Un super objet en bon état.</p>
+                <span class="badge badge-new">DISPONIBLE</span>
+                <div style="margin-top: 1rem;">
+                    <a href="#" class="btn btn-outline" style="font-size: 0.8rem;">Voir détail</a>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Vieux PC</h3>
+                <p style="color: var(--text-muted);">Fonctionne encore pour bureautique.</p>
+                <span class="badge badge-new">DISPONIBLE</span>
+                <div style="margin-top: 1rem;">
+                    <a href="#" class="btn btn-outline" style="font-size: 0.8rem;">Voir détail</a>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Livres SF</h3>
+                <p style="color: var(--text-muted);">Collection Isaac Asimov.</p>
+                <span class="badge badge-new">DISPONIBLE</span>
+                <div style="margin-top: 1rem;">
+                    <a href="#" class="btn btn-outline" style="font-size: 0.8rem;">Voir détail</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

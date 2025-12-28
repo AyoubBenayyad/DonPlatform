@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <div id="annonce-detail">
+            <p>Chargement...</p>
+        </div>
+
+        <script>
+            async function loadDetail() {
+                console.log("🚀 [Frontend] Starting loadDetail...");
+                const pathParts = window.location.pathname.split('/');
+                const id = pathParts[pathParts.length - 1];
+                console.log("🆔 [Frontend] Annonce ID:", id);
+
+                try {
+                    console.log(`📡 [Frontend] Fetching /api/annonces/${id}...`);
+                    const response = await fetch(`/api/annonces/${id}`);
+                    console.log("📡 [Frontend] API Response Status:", response.status);
+
+                    if (!response.ok) {
+                        console.error("❌ [Frontend] API Error:", response.statusText);
+                        throw new Error('Not found');
+                    }
+                    const annonce = await response.json();
+                    console.log("✅ [Frontend] Annonce data received:", annonce);
+
+                    // Image handling
+                    let imageUrl = 'https://source.unsplash.com/random/800x600/?object';
+                    if (annonce.images && annonce.images.length > 0) {
+                        imageUrl = annonce.images[0];
+                    }
+
+                    // Fetch current user to check ownership
+                    let currentUserId = null;
+                    try {
+                        console.log("👤 [Frontend] Checking user session (/api/auth/me)...");
+                        const userRes = await fetch('/api/auth/me');
+                        if (userRes.ok) {
+                            const user = await userRes.json();
+                            currentUserId = user.id;
+                            console.log("👤 [Frontend] Current User ID:", currentUserId);
+                        } else {
+                            console.log("👤 [Frontend] User not logged in (Status:", userRes.status, ")");
+                        }
+                    } catch (e) {
+                        console.warn("⚠️ [Frontend] Failed to fetch user session:", e);
+                    }
+
+                    const isOwner = currentUserId && annonce.createur && (currentUserId === annonce.createur.id);
+                    console.log("🔐 [Frontend] Is Owner?", isOwner);
+
+                    const editButtonHtml = isOwner ?
+                        `<a href="/annonces/edit/${annonce.id}" class="btn btn-primary" style="background: linear-gradient(45deg, #fdcb6e, #e17055); border:none;">✏️ Modifier</a>` : '';
+
+                    const container = document.getElementById('annonce-detail');
+                    if (!container) {
+                        console.error("❌ [Frontend] DOM Element 'annonce-detail' not found!");
+                        return;
+                    }
+
+                    container.innerHTML = `
+                    <div class="fade-in-up">
+                        <div style="margin-bottom: 2rem;">
+                            <a href="/annonces" style="color: var(--text-muted); text-decoration: none;">&larr; Retour aux annonces</a>
+                        </div>
+
+                        <div class="card" style="overflow: hidden; padding: 0;">
+                            <div style="height: 300px; background: #eee; position: relative;">
+                                <img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;">
+                                <div style="position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.7), transparent); padding: 2rem; box-sizing: border-box;">
+                                    <h1 style="color: white; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">${annonce.titre}</h1>
+                                    <div style="color: rgba(255,255,255,0.9); margin-top: 0.5rem; display: flex; gap: 1rem; align-items: center;">
+                                        <span>📅 ${new Date(annonce.datePublication).toLocaleDateString()}</span>
+                                        <span>📍 ${annonce.zoneGeographique}</span>
+                                        <span class="badge" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); color: white;">${annonce.statut}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 2rem;">
+                                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 3rem;">
+                                    <div>
+                                        <h3 style="color: var(--primary-color);">Description</h3>
+                                        <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-color);">${annonce.description}</p>
+                                        
+                                        <div style="margin-top: 2rem;">
+                                            <h4 style="margin-bottom: 1rem;">Mots clés</h4>
+                                            <div>
+                                                ${(annonce.motsCles || []).map(k => `<span class="badge" style="background: var(--bg-gradient); color: var(--text-color); margin-right: 0.5rem;">#${k}</span>`).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 12px; height: fit-content;">
+                                        <h4 style="margin-top: 0;">Détails</h4>
+                                        <ul style="list-style: none; padding: 0; margin: 0;">
+                                            <li style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                                                <span style="color: var(--text-muted);">État</span>
+                                                <strong>${annonce.etat}</strong>
+                                            </li>
+                                            <li style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                                                <span style="color: var(--text-muted);">Livraison</span>
+                                                <strong>${annonce.modeRemise}</strong>
+                                            </li>
+                                            <li style="margin-bottom: 1rem; display: flex; justify-content: space-between;">
+                                                <span style="color: var(--text-muted);">Donneur</span>
+                                                <strong>${annonce.createur ? annonce.createur.username : 'Anonyme'}</strong>
+                                            </li>
+                                        </ul>
+
+                                        <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+                                            ${editButtonHtml}
+                                            <button onclick="contacter(${annonce.createur.id})" class="btn btn-primary" style="width: 100%; text-align: center;">💬 Contacter</button>
+                                            <button onclick="addFavori(${annonce.id})" class="btn btn-outline" style="width: 100%; text-align: center;">❤️ Favoris</button>
+                                        </div>
+                                        <div id="actionFeedback" style="display:none; margin-top: 1rem; padding: 0.5rem; border-radius: 8px; font-size: 0.9rem; text-align: center;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                    console.log("✅ [Frontend] DOM Updated successfully.");
+
+                } catch (error) {
+                    console.error("❌ [Frontend] Critical Error in loadDetail:", error);
+                    document.getElementById('annonce-detail').innerHTML = `
+                        <div class="card" style="text-align: center; padding: 4rem;">
+                            <h2>🚫 Annonce introuvable</h2>
+                            <p>Cette annonce n'existe pas ou a été supprimée.</p>
+                            <p style="color: red; font-size: 0.8rem;">${error.message}</p>
+                            <a href="/annonces" class="btn btn-primary">Retour aux annonces</a>
+                        </div>
+                    `;
+                }
+            }
+
+            function showFeedback(msg, isError = false) {
+                const el = document.getElementById('actionFeedback');
+                if (el) {
+                    el.style.display = 'block';
+                    el.textContent = msg;
+                    el.style.background = isError ? '#ffebee' : '#e8f5e9';
+                    el.style.color = isError ? '#c62828' : '#2e7d32';
+                    setTimeout(() => el.style.display = 'none', 3000);
+                }
+            }
+
+            async function addFavori(id) {
+                console.log("❤️ [Frontend] Adding favorite:", id);
+                try {
+                    const res = await fetch(`/api/favoris/${id}`, {
+                        method: 'POST'
+                    });
+                    if (res.ok) showFeedback('❤️ Ajouté aux favoris !');
+                    else if (res.status === 401 || res.status === 403) {
+                        console.warn("⚠️ [Frontend] Not authorized to add favorite. Redirecting to login.");
+                        window.location.href = '/login';
+                    } else {
+                        const errorText = await res.text();
+                        console.error("❌ [Frontend] Error adding favorite:", res.status, errorText);
+                        showFeedback('Erreur lors de l\'ajout', true);
+                    }
+                } catch (e) {
+                    console.error("❌ [Frontend] Server error adding favorite:", e);
+                    showFeedback('Erreur serveur', true);
+                }
+            }
+
+            function contacter(userId) {
+                console.log("💌 [Frontend] Contacting user:", userId);
+                showFeedback('💌 Fonctionnalité de messagerie à venir !');
+            }
+
+            // Execute
+            loadDetail();
+        </script>
+    </div>
+</body>
+
+</html>

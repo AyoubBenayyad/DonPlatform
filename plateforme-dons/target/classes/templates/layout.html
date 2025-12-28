@@ -1,0 +1,67 @@
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+    th:fragment="main(content)">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plateforme de Dons</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="brand">DonationPlatform</a>
+        <div class="nav-links">
+            <a href="/annonces">Annonces</a>
+
+            <div sec:authorize="isAuthenticated()">
+                <a href="/annonces/new" class="btn btn-primary">Donner un objet</a>
+                <a href="/favoris">Favoris</a>
+                <button onclick="handleLogout()" class="btn btn-outline"
+                    style="margin-left: 1rem; cursor: pointer;">Déconnexion</button>
+            </div>
+
+            <div sec:authorize="!isAuthenticated()">
+                <a href="/login" class="btn btn-outline">Connexion</a>
+                <a href="/register" class="btn btn-primary">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <script>
+        async function handleLogout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error(error);
+                window.location.href = '/';
+            }
+        }
+    </script>
+
+    <div class="container">
+        <div th:if="${error}" class="card"
+            style="border-color: #ff0055; background: rgba(255,0,85,0.1); margin-bottom: 1rem;">
+            <p style="color: #ff0055; margin: 0;" th:text="${error}"></p>
+        </div>
+
+        <div th:if="${success}" class="card"
+            style="border-color: var(--primary-color); background: rgba(0, 240, 255, 0.1); margin-bottom: 1rem;">
+            <p style="color: var(--primary-color); margin: 0;" th:text="${success}"></p>
+        </div>
+
+        <div th:replace="${content}"></div>
+    </div>
+
+</body>
+
+</html>

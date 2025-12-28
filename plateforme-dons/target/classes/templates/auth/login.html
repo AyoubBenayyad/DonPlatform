@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <div style="max-width: 400px; margin: 4rem auto;">
+            <h2 class="text-center">Connexion</h2>
+            <div class="card">
+                <!-- Note: Form submission is handled by REST API JS usually, or separate form login handler.
+                 For this phase, sticking to simple form structure. We might need JS to fetch JWT and store it. -->
+                <form id="loginForm">
+                    <div class="mb-1">
+                        <label>Nom d'utilisateur ou Email</label>
+                        <input type="text" id="username" class="form-control" required>
+                    </div>
+                    <div class="mb-1">
+                        <label>Mot de passe</label>
+                        <input type="password" id="password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Se connecter</button>
+                </form>
+                <p class="text-center mt-1">
+                    Pas encore de compte ? <a href="/register">S'inscrire</a>
+                </p>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ usernameOrEmail: username, password: password })
+                    });
+
+                    if (response.ok) {
+                        // Cookie is set automatically by the server
+                        window.location.href = '/';
+                    } else {
+                        alert('Échec de connexion');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert('Erreur serveur');
+                }
+            });
+        </script>
+    </div>
+</body>
+
+</html>

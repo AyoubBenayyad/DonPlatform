@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <div class="fade-in-up">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 class="text-gradient" style="font-size: 2rem;">Explorer les dons</h2>
+                <a href="/annonces/new" class="btn btn-primary"
+                    style="box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);">✨ Publier une annonce</a>
+            </div>
+
+            <!-- Search Section -->
+            <div class="card glass-effect mb-2"
+                style="background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3);">
+                <form id="searchForm" action="/annonces" method="get" class="grid"
+                    style="grid-template-columns: 2fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+
+                    <div class="form-group mb-0">
+                        <label class="form-label"
+                            style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Rechercher</label>
+                        <div style="position: relative;">
+                            <input type="text" id="motCleInput" name="motCle" placeholder="Ex: Vélo, Canapé..."
+                                class="form-control" style="margin-bottom:0; padding-left: 2.5rem;"
+                                list="suggestionsList" autocomplete="off">
+                            <span
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+                        </div>
+                        <datalist id="suggestionsList"></datalist>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="form-label"
+                            style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Localisation</label>
+                        <div style="position: relative;">
+                            <input type="text" name="zone" placeholder="Ville ou CP" class="form-control"
+                                style="margin-bottom:0; padding-left: 2.5rem;">
+                            <span
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">📍</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="form-label"
+                            style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">État</label>
+                        <select name="etat" class="form-control" style="margin-bottom:0; cursor: pointer;">
+                            <option value="">Tous les états</option>
+                            <option value="NEUF">Neuf</option>
+                            <option value="TRES_BON_ETAT">Très bon état</option>
+                            <option value="BON_ETAT">Bon état</option>
+                            <option value="USAGE_ACCEPTABLE">Usagé</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary"
+                            style="height: 52px; padding: 0 1.5rem;">Filtrer</button>
+                        <button type="button" onclick="resetFilters()" class="btn btn-outline"
+                            style="height: 52px; width: 52px; display: flex; align-items: center; justify-content: center; padding: 0;"
+                            title="Réinitialiser">🔄</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Active Filters -->
+            <div id="activeFilters"
+                style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem; min-height: 20px;"></div>
+
+            <!-- Container for dynamic content -->
+            <div id="annonces-grid" class="grid fade-in-up" style="animation-delay: 0.1s;">
+                <div style="grid-column: 1/-1; display: flex; justify-content: center; padding: 4rem;">
+                    <div class="loader"></div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .loader {
+                border: 3px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 3px solid var(--primary-color);
+                width: 30px;
+                height: 30px;
+                -webkit-animation: spin 1s linear infinite;
+                /* Safari */
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .filter-tag {
+                background: white;
+                border: 1px solid var(--border-color);
+                padding: 0.4rem 1rem;
+                border-radius: 50px;
+                font-size: 0.9rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-color);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+                transition: transform 0.2s;
+            }
+
+            .filter-tag:hover {
+                transform: translateY(-2px);
+            }
+
+            .filter-tag span {
+                cursor: pointer;
+                color: var(--text-muted);
+                font-weight: bold;
+            }
+
+            .filter-tag span:hover {
+                color: #ff4757;
+            }
+        </style>
+
+        <script>
+            // --- Helper Functions ---
+
+            function resetFilters() {
+                window.location.href = '/annonces';
+            }
+
+            function removeFilter(key) {
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.delete(key);
+                window.location.search = urlParams.toString();
+            }
+
+            // --- Autocomplete Logic ---
+            const motCleInput = document.getElementById('motCleInput');
+            const suggestionsList = document.getElementById('suggestionsList');
+            let debounceTimer;
+
+            motCleInput.addEventListener('input', (e) => {
+                clearTimeout(debounceTimer);
+                const query = e.target.value;
+                if (query.length < 2) return;
+
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/api/annonces/suggestions?query=${encodeURIComponent(query)}`);
+                        if (res.ok) {
+                            const suggestions = await res.json();
+                            suggestionsList.innerHTML = suggestions.map(s => `<option value="${s}">`).join('');
+                        }
+                    } catch (err) {
+                        console.error("Autocomplete error:", err);
+                    }
+                }, 300);
+            });
+
+
+            // --- Main Load Logic ---
+            async function loadAnnonces() {
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const params = Object.fromEntries(urlParams.entries());
+
+                    // Populate Form
+                    if (params.motCle) document.querySelector('[name="motCle"]').value = params.motCle;
+                    if (params.zone) document.querySelector('[name="zone"]').value = params.zone;
+                    if (params.etat) document.querySelector('[name="etat"]').value = params.etat;
+
+                    // Fetch Data
+                    let apiUrl = '/api/annonces';
+                    if (params.motCle || params.zone || params.etat || params.modeRemise) {
+                        apiUrl = '/api/annonces/recherche';
+                        if (params.zone) {
+                            urlParams.set('zoneGeographique', params.zone);
+                            urlParams.delete('zone');
+                        }
+                    }
+
+                    const finalUrl = `${apiUrl}?page=0&size=20&${urlParams.toString()}`;
+                    const response = await fetch(finalUrl);
+
+                    if (!response.ok) throw new Error('Failed to fetch data');
+
+                    const page = await response.json();
+                    const container = document.getElementById('annonces-grid');
+                    container.innerHTML = '';
+
+                    if (page.content.length === 0) {
+                        container.innerHTML = `
+                            <div style="grid-column: 1/-1; text-align: center; padding: 4rem;">
+                                <h3 style="color: var(--text-color);">Aucun résultat</h3>
+                                <p style="color: var(--text-muted);">Essayez d'autres mots-clés ou modifiez vos filtres.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    page.content.forEach((annonce, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+
+                        // Image Handling
+                        let imageUrl = 'https://source.unsplash.com/random/400x400/?object';
+                        if (annonce.images && annonce.images.length > 0) {
+                            imageUrl = annonce.images[0];
+                        }
+
+                        const zone = annonce.zoneGeographique || 'N/A';
+                        // Determine status color (if needed, but design is clean)
+
+                        card.innerHTML = `
+                        <div style="position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 0.75rem;">
+                            <img src="${imageUrl}" style="width: 100%; aspect-ratio: 1/0.95; object-fit: cover;">
+                            <span class="badge" style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem;">
+                                ${annonce.modeRemise === 'MAIN_PROPRE' ? 'Main propre' : 'Livraison'}
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #222;">${annonce.titre}</h3>
+                            <span style="font-size: 0.9rem; color: #222;">★ Gratuit</span>
+                        </div>
+                        
+                        <p style="margin: 2px 0 0 0; color: #717171; font-size: 0.95rem;">${zone}</p>
+                        <p style="margin: 0; color: #717171; font-size: 0.95rem;">${annonce.etat ? annonce.etat.toLowerCase().replace(/_/g, ' ') : ''}</p>
+                        
+                        <a href="/annonces/${annonce.id}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></a>
+                    `;
+                        container.appendChild(card);
+                    });
+
+                } catch (error) {
+                    console.error("Error:", error);
+                    document.getElementById('annonces-grid').innerHTML = '<p style="color: red;">Erreur chargement.</p>';
+                }
+            }
+
+            loadAnnonces();
+        </script>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <div class="fade-in-up" style="max-width: 800px; margin: 2rem auto;">
+            <h2 class="text-gradient mb-1">Publier une annonce</h2>
+            <div class="card glass-effect">
+                <form id="createAnnonceForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="form-label">Titre de l'annonce</label>
+                        <input type="text" id="titre" class="form-control" placeholder="Ex: Vélo VTT..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description détaillée</label>
+                        <textarea id="description" class="form-control" rows="5"
+                            placeholder="Décrivez l'objet, son histoire..." required></textarea>
+                    </div>
+
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="form-group">
+                            <label class="form-label">État</label>
+                            <select id="etat" class="form-control">
+                                <option value="NEUF">✨ Neuf</option>
+                                <option value="TRES_BON_ETAT">🌟 Très bon état</option>
+                                <option value="BON_ETAT">👍 Bon état</option>
+                                <option value="USAGE_ACCEPTABLE">👌 Usagé acceptable</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Mode de remise</label>
+                            <select id="modeRemise" class="form-control">
+                                <option value="MAIN_PROPRE">🤝 Main propre</option>
+                                <option value="ENVOI_POSSIBLE">📦 Livraison possible</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Zone Géographique</label>
+                        <div class="input-with-icon">
+                            <input type="text" id="zoneGeographique" class="form-control"
+                                placeholder="Ville ou Code Postal" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Mots clés</label>
+                        <input type="text" id="motsCles" class="form-control"
+                            placeholder="ex: meuble, cuisine, vintage">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Photo de l'objet</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="imageFile" name="imageFile" accept="image/*" class="file-input">
+                            <div class="file-upload-placeholder">
+                                <span>📸 Glissez une image ou cliquez pour ajouter</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error/Success Message Container -->
+                    <div id="feedbackMessage" style="display:none; margin: 1rem 0; padding: 1rem; border-radius: 8px;">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block mt-1"
+                        style="width: 100%; font-size: 1.1rem;">
+                        🚀 Publier l'annonce
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            // Preview image selection
+            const fileInput = document.getElementById('imageFile');
+            const placeholder = document.querySelector('.file-upload-placeholder');
+
+            fileInput.addEventListener('change', function (e) {
+                if (this.files && this.files[0]) {
+                    placeholder.innerHTML = `<span>✅ ${this.files[0].name} sélectionné</span>`;
+                    placeholder.style.borderColor = 'var(--primary-color)';
+                    placeholder.style.background = 'rgba(0,0,0,0.05)';
+                }
+            });
+
+            // Check if in Edit Mode
+            const pathParts = window.location.pathname.split('/');
+            const isEditMode = pathParts.includes('edit');
+            const annonceId = isEditMode ? pathParts[pathParts.length - 1] : null;
+
+            if (isEditMode) {
+                document.querySelector('h2').textContent = 'Modifier l\'annonce';
+                document.querySelector('button[type="submit"]').textContent = '💾 Enregistrer les modifications';
+                document.getElementById('imageFile').closest('.form-group').style.display = 'none'; // Hide image upload for edit
+                loadAnnonceData(annonceId);
+            }
+
+            async function loadAnnonceData(id) {
+                try {
+                    const res = await fetch(`/api/annonces/${id}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        document.getElementById('titre').value = data.titre;
+                        document.getElementById('description').value = data.description;
+                        document.getElementById('etat').value = data.etat;
+                        document.getElementById('modeRemise').value = data.modeRemise;
+                        document.getElementById('zoneGeographique').value = data.zoneGeographique;
+                        document.getElementById('motsCles').value = data.motsCles ? data.motsCles.join(', ') : '';
+                    }
+                } catch (e) {
+                    console.error('Error loading data', e);
+                }
+            }
+
+            document.getElementById('createAnnonceForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const feedback = document.getElementById('feedbackMessage');
+                feedback.style.display = 'none';
+
+                const annonceData = {
+                    titre: document.getElementById('titre').value,
+                    description: document.getElementById('description').value,
+                    etat: document.getElementById('etat').value,
+                    modeRemise: document.getElementById('modeRemise').value,
+                    zoneGeographique: document.getElementById('zoneGeographique').value,
+                    motsCles: document.getElementById('motsCles').value.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                };
+
+                try {
+                    let response;
+                    if (isEditMode) {
+                        // UPDATE (PUT) - JSON only
+                        response = await fetch(`/api/annonces/${annonceId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(annonceData)
+                        });
+                    } else {
+                        // CREATE (POST) - Multipart
+                        const formData = new FormData();
+                        formData.append('annonce', JSON.stringify(annonceData));
+
+                        const imageFile = document.getElementById('imageFile').files[0];
+                        if (imageFile) {
+                            formData.append('imageFile', imageFile);
+                        }
+
+                        response = await fetch('/api/annonces', {
+                            method: 'POST',
+                            body: formData
+                        });
+                    }
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        feedback.className = 'success-message';
+                        feedback.style.background = '#d4edda';
+                        feedback.style.color = '#155724';
+                        feedback.style.display = 'block';
+                        feedback.textContent = isEditMode ? '✅ Annonce modifiée !' : '🎉 Annonce publiée avec succès !';
+
+                        setTimeout(() => {
+                            window.location.href = '/annonces/' + (data.id || annonceId);
+                        }, 1500);
+                    } else {
+                        const txt = await response.text();
+                        feedback.className = 'error-message';
+                        feedback.style.background = '#f8d7da';
+                        feedback.style.color = '#721c24';
+                        feedback.style.display = 'block';
+                        feedback.textContent = '❌ Erreur : ' + (txt || 'Vérifiez vos données.');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    feedback.className = 'error-message';
+                    feedback.style.background = '#f8d7da';
+                    feedback.style.color = '#721c24';
+                    feedback.style.display = 'block';
+                    feedback.textContent = '❌ Erreur serveur. Veuillez réessayer.';
+                }
+            });
+        </script>
+
+        <style>
+            .glass-effect {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            }
+
+            .file-upload-wrapper {
+                position: relative;
+                height: 100px;
+                margin-top: 0.5rem;
+            }
+
+            .file-input {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                opacity: 0;
+                cursor: pointer;
+                z-index: 2;
+            }
+
+            .file-upload-placeholder {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                border: 2px dashed #ccc;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #f8f9fa;
+                transition: all 0.3s;
+            }
+
+            .file-input:hover+.file-upload-placeholder {
+                border-color: var(--primary-color);
+                background: #fff;
+            }
+
+            .fade-in-up {
+                animation: fadeInUp 0.6s ease-out forwards;
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            @keyframes fadeInUp {
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        </style>
+    </div>
+</body>
+
+</html>
