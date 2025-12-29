@@ -27,26 +27,34 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final com.plateforme.dons.service.EmailService emailService;
 
     @PostMapping("/login")
     public ResponseEntity<String> authenticateUser(@RequestBody LoginRequest loginRequest,
             HttpServletResponse response) {
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                loginRequest.getUsernameOrEmail(), loginRequest.getPassword()));
+        try {
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                    loginRequest.getUsernameOrEmail(), loginRequest.getPassword()));
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String token = jwtTokenProvider.generateToken(authentication);
+            String token = jwtTokenProvider.generateToken(authentication);
 
-        // Set HttpOnly cookie
-        Cookie cookie = new Cookie("JWT_TOKEN", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false); // Set to true in production with HTTPS
-        cookie.setPath("/");
-        cookie.setMaxAge(24 * 60 * 60); // 24 hours
-        response.addCookie(cookie);
+            // Set HttpOnly cookie
+            Cookie cookie = new Cookie("JWT_TOKEN", token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(false); // Set to true in production with HTTPS
+            cookie.setPath("/");
+            cookie.setMaxAge(24 * 60 * 60); // 24 hours
+            response.addCookie(cookie);
 
-        return ResponseEntity.ok("Connexion réussie");
+            return ResponseEntity.ok("Connexion réussie");
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Votre compte n'est pas encore activé. Veuillez vérifier vos emails.");
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Nom d'utilisateur ou mot de passe incorrect.");
+        }
     }
 
     @PostMapping("/logout")
@@ -78,6 +86,7 @@ public class AuthController {
         summary.setId(user.getId());
         summary.setUsername(user.getUsername());
         summary.setEmail(user.getEmail());
+        summary.setNotificationsActive(user.isNotificationsActive());
         // Add role if needed in DTO, but for now ID is enough for ownership check
 
         return ResponseEntity.ok(summary);
@@ -99,9 +108,29 @@ public class AuthController {
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setRole(Role.USER);
+        user.setEnabled(false); // Disabled by default
+
+        String token = java.util.UUID.randomUUID().toString();
+        user.setActivationToken(token);
 
         userRepository.save(user);
 
-        return new ResponseEntity<>("Utilisateur enregistré avec succès !", HttpStatus.CREATED);
+        // Send email
+        emailService.sendActivationEmail(user.getEmail(), token);
+
+        return new ResponseEntity<>("Compte créé avec succès ! Vérifiez votre email pour l'activer.",
+                HttpStatus.CREATED);
+    }
+
+    @GetMapping("/activate")
+    public ResponseEntity<String> activateAccount(@RequestParam String token) {
+        User user = userRepository.findByActivationToken(token)
+                .orElseThrow(() -> new RuntimeException("Jeton d'activation invalide"));
+
+        user.setEnabled(true);
+        user.setActivationToken(null);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Compte activé avec succès ! Vous pouvez maintenant vous connecter.");
     }
 }

@@ -20,4 +20,8 @@ public interface AnnonceService {
     Page<AnnonceResponse> rechercherAnnonces(RechercheAnnonceCriteria criteria, Pageable pageable);
 
     java.util.List<String> getSuggestions(String query);
+
+    AnnonceResponse updateStatut(Long id, com.plateforme.dons.entity.StatutAnnonce statut, String username);
+
+    java.util.List<AnnonceResponse> getAnnoncesByUsername(String username);
 }

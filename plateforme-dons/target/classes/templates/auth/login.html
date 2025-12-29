@@ -42,7 +42,8 @@
                         // Cookie is set automatically by the server
                         window.location.href = '/';
                     } else {
-                        alert('Échec de connexion');
+                        const errorMsg = await response.text();
+                        alert(errorMsg || 'Échec de connexion');
                     }
                 } catch (error) {
                     console.error(error);

@@ -24,7 +24,9 @@
                                 class="form-control" style="margin-bottom:0; padding-left: 2.5rem;"
                                 list="suggestionsList" autocomplete="off">
                             <span
-                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"><img
+                                    src="/images/icons/search.svg" width="16" height="16"
+                                    style="vertical-align: middle; filter: invert(0.5);"></span>
                         </div>
                         <datalist id="suggestionsList"></datalist>
                     </div>
@@ -36,7 +38,9 @@
                             <input type="text" name="zone" placeholder="Ville ou CP" class="form-control"
                                 style="margin-bottom:0; padding-left: 2.5rem;">
                             <span
-                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">📍</span>
+                                style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"><img
+                                    src="/images/icons/map-pin.svg" width="16" height="16"
+                                    style="vertical-align: middle; filter: invert(0.5);"></span>
                         </div>
                     </div>
 
@@ -55,9 +59,12 @@
                     <div style="display: flex; gap: 0.5rem;">
                         <button type="submit" class="btn btn-primary"
                             style="height: 52px; padding: 0 1.5rem;">Filtrer</button>
+                        <button type="button" onclick="saveCurrentSearch()" class="btn btn-outline"
+                            style="height: 52px; padding: 0 1.5rem;" title="Sauvegarder cette recherche"><img
+                                src="/images/icons/save.svg" width="20" height="20"></button>
                         <button type="button" onclick="resetFilters()" class="btn btn-outline"
                             style="height: 52px; width: 52px; display: flex; align-items: center; justify-content: center; padding: 0;"
-                            title="Réinitialiser">🔄</button>
+                            title="Réinitialiser"><img src="/images/icons/refresh.svg" width="20" height="20"></button>
                     </div>
                 </form>
             </div>
@@ -138,6 +145,59 @@
                 window.location.search = urlParams.toString();
             }
 
+            async function saveCurrentSearch() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const params = Object.fromEntries(urlParams.entries());
+
+                // Remove page/size params as we only save criteria
+                delete params.page;
+                delete params.size;
+
+                if (Object.keys(params).length === 0) {
+                    alert("Veuillez sélectionner au moins un critère de recherche avant de sauvegarder.");
+                    return;
+                }
+
+                const title = prompt("Nommez cette recherche :");
+                if (!title) return;
+
+                // Map params to criteria object
+                const criteria = {
+                    motCle: params.motCle || null,
+                    zoneGeographique: params.zone || null, // UI uses 'zone', API expects 'zoneGeographique' logic mapped in controller/service
+                    etat: params.etat || null,
+                    modeRemise: params.modeRemise || null
+                    // Add dates if implemented in UI
+                };
+
+                // If using the same naming as RequestParams in list.html:
+                if (params.zone) criteria.zoneGeographique = params.zone;
+
+                try {
+                    const response = await fetch(`/api/recherches?title=${encodeURIComponent(title)}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(criteria)
+                    });
+
+                    if (response.ok) {
+                        alert("Recherche sauvegardée !");
+                    } else {
+                        if (response.status === 401 || response.status === 403) {
+                            alert("Veuillez vous connecter pour sauvegarder une recherche.");
+                            window.location.href = "/login";
+                            return;
+                        }
+                        alert("Erreur lors de la sauvegarde.");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("Erreur système.");
+                }
+            }
+
             // --- Autocomplete Logic ---
             const motCleInput = document.getElementById('motCleInput');
             const suggestionsList = document.getElementById('suggestionsList');
@@ -162,8 +222,60 @@
             });
 
 
+            // Gestion des favoris
+            let userFavoris = new Set();
+            let isAuthenticated = false;
+
+            async function loadFavoris() {
+                try {
+                    const response = await fetch('/api/favorites/ids');
+                    if (response.ok) {
+                        const ids = await response.json();
+                        userFavoris = new Set(ids);
+                        isAuthenticated = true;
+                    } else if (response.status === 401 || response.status === 403) {
+                        isAuthenticated = false;
+                    }
+                } catch (e) {
+                    // Erreur silencieuse
+                }
+            }
+
+            async function toggleFavori(btn, id, event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (!isAuthenticated) {
+                    alert("Veuillez vous connecter pour ajouter des favoris.");
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const isFav = userFavoris.has(id);
+                const url = `/api/favorites/toggle/${id}`;
+
+                try {
+                    const res = await fetch(url, { method: 'POST' });
+                    if (res.ok) {
+                        if (isFav) {
+                            userFavoris.delete(id);
+                            btn.innerHTML = '<img src="/images/icons/heart.svg" width="20" height="20" style="filter: invert(0.5);">';
+                        } else {
+                            userFavoris.add(id);
+                            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ff4757" stroke="#ff4757" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+                        }
+                    } else {
+                        alert("Erreur lors de la mise à jour des favoris.");
+                    }
+                } catch (e) {
+                    // Erreur silencieuse
+                }
+            }
+
             // --- Main Load Logic ---
             async function loadAnnonces() {
+                await loadFavoris(); // Load favs first
+
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     const params = Object.fromEntries(urlParams.entries());
@@ -212,7 +324,13 @@
                         }
 
                         const zone = annonce.zoneGeographique || 'N/A';
-                        // Determine status color (if needed, but design is clean)
+
+                        // Heart Icon
+                        const isFav = userFavoris.has(annonce.id);
+                        const heartIcon = isFav
+                            ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#ff4757" stroke="#ff4757" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
+                            : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+
 
                         card.innerHTML = `
                         <div style="position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 0.75rem;">
@@ -220,6 +338,9 @@
                             <span class="badge" style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem;">
                                 ${annonce.modeRemise === 'MAIN_PROPRE' ? 'Main propre' : 'Livraison'}
                             </span>
+                            <button onclick="toggleFavori(this, ${annonce.id}, event)" style="position: absolute; top: 10px; right: 10px; background: none; border: none; cursor: pointer; padding: 0; z-index: 2;">
+                                ${heartIcon}
+                            </button>
                         </div>
                         
                         <div style="display: flex; justify-content: space-between; align-items: start;">

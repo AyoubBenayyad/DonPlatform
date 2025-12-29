@@ -22,17 +22,17 @@
                         <div class="form-group">
                             <label class="form-label">État</label>
                             <select id="etat" class="form-control">
-                                <option value="NEUF">✨ Neuf</option>
-                                <option value="TRES_BON_ETAT">🌟 Très bon état</option>
-                                <option value="BON_ETAT">👍 Bon état</option>
-                                <option value="USAGE_ACCEPTABLE">👌 Usagé acceptable</option>
+                                <option value="NEUF">Neuf</option>
+                                <option value="TRES_BON_ETAT">Très bon état</option>
+                                <option value="BON_ETAT">Bon état</option>
+                                <option value="USAGE_ACCEPTABLE">Usagé acceptable</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Mode de remise</label>
                             <select id="modeRemise" class="form-control">
-                                <option value="MAIN_PROPRE">🤝 Main propre</option>
-                                <option value="ENVOI_POSSIBLE">📦 Livraison possible</option>
+                                <option value="MAIN_PROPRE">Main propre</option>
+                                <option value="ENVOI_POSSIBLE">Livraison possible</option>
                             </select>
                         </div>
                     </div>
@@ -56,7 +56,7 @@
                         <div class="file-upload-wrapper">
                             <input type="file" id="imageFile" name="imageFile" accept="image/*" class="file-input">
                             <div class="file-upload-placeholder">
-                                <span>📸 Glissez une image ou cliquez pour ajouter</span>
+                                <span>Glissez une image ou cliquez pour ajouter</span>
                             </div>
                         </div>
                     </div>
@@ -67,7 +67,7 @@
 
                     <button type="submit" class="btn btn-primary btn-block mt-1"
                         style="width: 100%; font-size: 1.1rem;">
-                        🚀 Publier l'annonce
+                        Publier l'annonce
                     </button>
                 </form>
             </div>
@@ -80,7 +80,7 @@
 
             fileInput.addEventListener('change', function (e) {
                 if (this.files && this.files[0]) {
-                    placeholder.innerHTML = `<span>✅ ${this.files[0].name} sélectionné</span>`;
+                    placeholder.innerHTML = `<span>${this.files[0].name} sélectionné</span>`;
                     placeholder.style.borderColor = 'var(--primary-color)';
                     placeholder.style.background = 'rgba(0,0,0,0.05)';
                 }
@@ -93,7 +93,7 @@
 
             if (isEditMode) {
                 document.querySelector('h2').textContent = 'Modifier l\'annonce';
-                document.querySelector('button[type="submit"]').textContent = '💾 Enregistrer les modifications';
+                document.querySelector('button[type="submit"]').textContent = 'Enregistrer les modifications';
                 document.getElementById('imageFile').closest('.form-group').style.display = 'none'; // Hide image upload for edit
                 loadAnnonceData(annonceId);
             }
@@ -162,7 +162,7 @@
                         feedback.style.background = '#d4edda';
                         feedback.style.color = '#155724';
                         feedback.style.display = 'block';
-                        feedback.textContent = isEditMode ? '✅ Annonce modifiée !' : '🎉 Annonce publiée avec succès !';
+                        feedback.textContent = isEditMode ? 'Annonce modifiée !' : 'Annonce publiée avec succès !';
 
                         setTimeout(() => {
                             window.location.href = '/annonces/' + (data.id || annonceId);

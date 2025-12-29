@@ -27,6 +27,7 @@ public class AnnonceServiceImpl implements AnnonceService {
 
     private final AnnonceRepository annonceRepository;
     private final UserRepository userRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -47,6 +48,8 @@ public class AnnonceServiceImpl implements AnnonceService {
         annonce.setCreateur(user);
 
         Annonce savedAnnonce = annonceRepository.save(annonce);
+        eventPublisher.publishEvent(new com.plateforme.dons.event.AnnonceCreatedEvent(this, savedAnnonce));
+
         return mapToResponse(savedAnnonce);
     }
 
@@ -124,6 +127,31 @@ public class AnnonceServiceImpl implements AnnonceService {
             return java.util.Collections.emptyList();
         }
         return annonceRepository.findSuggestions(query.trim());
+    }
+
+    @Override
+    @Transactional
+    public AnnonceResponse updateStatut(Long id, com.plateforme.dons.entity.StatutAnnonce statut, String username) {
+        Annonce annonce = annonceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Annonce", "id", id));
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé"));
+
+        if (!annonce.getCreateur().getId().equals(user.getId()) && !user.getRole().equals(Role.ADMIN)) {
+            throw new AccessDeniedException("Vous n'êtes pas autorisé à modifier cette annonce");
+        }
+
+        annonce.setStatut(statut);
+        Annonce updated = annonceRepository.save(annonce);
+        return mapToResponse(updated);
+    }
+
+    @Override
+    public java.util.List<AnnonceResponse> getAnnoncesByUsername(String username) {
+        return annonceRepository.findByCreateurUsernameOrderByDatePublicationDesc(username).stream()
+                .map(this::mapToResponse)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private AnnonceResponse mapToResponse(Annonce annonce) {

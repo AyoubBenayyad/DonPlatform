@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<head>
+    <title>Mes Favoris</title>
+</head>
+
+<body>
+    <div th:fragment="content">
+        <h2 class="text-gradient mb-4">Mes Favoris ❤️</h2>
+
+        <div th:if="${#lists.isEmpty(favorites)}" style="text-align: center; padding: 4rem;">
+            <h3>Aucun favori pour le moment</h3>
+            <a href="/annonces" class="btn btn-primary">Explorer les dons</a>
+        </div>
+
+        <div class="grid" th:unless="${#lists.isEmpty(favorites)}">
+            <div th:each="annonce : ${favorites}" class="card">
+                <!-- Image -->
+                <div style="position: relative; overflow: hidden; border-radius: 12px; margin-bottom: 0.75rem;">
+                    <img th:src="${!annonce.images.isEmpty()} ? ${annonce.images[0]} : 'https://source.unsplash.com/random/400x400/?object'"
+                        style="width: 100%; aspect-ratio: 1/0.95; object-fit: cover;">
+                    <button th:onclick="'toggleThis(' + ${annonce.id} + ', this)'"
+                        style="position: absolute; top: 10px; right: 10px; background: white; border: none; cursor: pointer; padding: 6px; border-radius: 50%;">
+                        ❌
+                    </button>
+                </div>
+
+                <h3 th:text="${annonce.titre}" style="font-weight: 600;">Titre</h3>
+                <p th:text="${annonce.zoneGeographique}" style="color: #777;">Zone</p>
+                <a th:href="@{/annonces/{id}(id=${annonce.id})}" class="btn btn-outline"
+                    style="width: 100%; margin-top: 1rem;">Voir</a>
+            </div>
+        </div>
+
+        <script>
+            async function toggleThis(id, btn) {
+                if (!confirm('Retirer des favoris ?')) return;
+                try {
+                    const res = await fetch('/api/favorites/toggle/' + id, { method: 'POST' });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Erreur');
+                    }
+                } catch (e) { console.error(e); }
+            }
+        </script>
+    </div>
+</body>
+
+</html>

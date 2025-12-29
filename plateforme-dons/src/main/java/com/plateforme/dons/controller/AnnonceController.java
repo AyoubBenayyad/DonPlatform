@@ -26,7 +26,7 @@ public class AnnonceController {
     private final com.plateforme.dons.service.interfaces.StorageService storageService;
 
     @PostMapping(consumes = { MediaType.MULTIPART_FORM_DATA_VALUE })
-    public ResponseEntity<AnnonceResponse> createAnnonce(
+    public ResponseEntity<?> createAnnonce(
             @RequestPart("annonce") String annonceRequestStr,
             @RequestPart(value = "imageFile", required = false) MultipartFile imageFile) {
 
@@ -37,6 +37,8 @@ public class AnnonceController {
             if (imageFile != null && !imageFile.isEmpty()) {
                 String imageUrl = storageService.uploadFile(imageFile);
                 annonceRequest.setImages(java.util.Collections.singleton(imageUrl));
+            } else {
+                return ResponseEntity.badRequest().body("Une image est obligatoire pour créer une annonce.");
             }
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -91,5 +93,20 @@ public class AnnonceController {
         String username = authentication.getName();
         annonceService.deleteAnnonce(id, username);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<java.util.List<AnnonceResponse>> getMyAnnonces() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return ResponseEntity.ok(annonceService.getAnnoncesByUsername(username));
+    }
+
+    @PatchMapping("/{id}/statut")
+    public ResponseEntity<AnnonceResponse> updateStatut(@PathVariable Long id,
+            @RequestParam com.plateforme.dons.entity.StatutAnnonce statut) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return ResponseEntity.ok(annonceService.updateStatut(id, statut, username));
     }
 }

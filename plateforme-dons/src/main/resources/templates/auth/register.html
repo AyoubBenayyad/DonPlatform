@@ -42,7 +42,8 @@
                     });
 
                     if (response.ok) {
-                        alert('Inscription réussie ! Veuillez vous connecter.');
+                        const successMsg = await response.text();
+                        alert(successMsg);
                         window.location.href = '/login';
                     } else {
                         const txt = await response.text();

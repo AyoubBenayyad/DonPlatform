@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: main(~{::content})}">
+
+<body>
+    <div th:fragment="content">
+        <div class="fade-in-up" style="max-width: 800px; margin: 0 auto;">
+            <h2 class="text-gradient mb-4">Mes Recherches Sauvegardées</h2>
+
+            <div id="saved-searches-list" class="search-list">
+                <div class="loader-container">
+                    <div class="loader"></div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            async function loadSavedSearches() {
+                try {
+                    const response = await fetch('/api/recherches');
+                    const container = document.getElementById('saved-searches-list');
+                    container.innerHTML = '';
+
+                    if (!response.ok) {
+                        container.innerHTML = '<div class="empty-state">Veuillez vous connecter pour voir vos recherches.</div>';
+                        return;
+                    }
+
+                    const searches = await response.json();
+
+                    if (searches.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <span style="font-size: 3rem;">🔍</span>
+                                <h3>Aucune recherche sauvegardée</h3>
+                                <p>Sauvegardez vos critères de recherche préférés pour y accéder rapidement.</p>
+                                <a href="/annonces" class="btn btn-primary mt-2">Explorer les annonces</a>
+                            </div>`;
+                        return;
+                    }
+
+                    searches.forEach(search => {
+                        const card = document.createElement('div');
+                        card.className = 'saved-search-card fade-in-up';
+
+                        // Build query string
+                        const params = new URLSearchParams();
+                        if (search.motCle) params.append('motCle', search.motCle);
+                        if (search.zoneGeographique) params.append('zone', search.zoneGeographique);
+                        if (search.etat) params.append('etat', search.etat);
+
+                        const searchUrl = `/annonces?${params.toString()}`;
+
+                        // Format criteria
+                        let criteriaTags = '';
+                        if (search.motCle) criteriaTags += `<span class="criteria-tag"><img src="/images/icons/search.svg" width="14" height="14" style="margin-right:0.3rem; vertical-align: text-bottom; filter: invert(0.3);"> ${search.motCle}</span>`;
+                        if (search.zoneGeographique) criteriaTags += `<span class="criteria-tag"><img src="/images/icons/map-pin.svg" width="14" height="14" style="margin-right:0.3rem; vertical-align: text-bottom; filter: invert(0.3);"> ${search.zoneGeographique}</span>`;
+                        if (search.etat) criteriaTags += `<span class="criteria-tag"><img src="/images/icons/tag.svg" width="14" height="14" style="margin-right:0.3rem; vertical-align: text-bottom; filter: invert(0.3);"> ${search.etat}</span>`;
+
+                        card.innerHTML = `
+                            <div class="card-content" onclick="window.location.href='${searchUrl}'">
+                                <div class="card-header">
+                                    <h3 class="search-title">${search.titre}</h3>
+                                    <span class="search-date">${new Date(search.dateCreation).toLocaleDateString()}</span>
+                                </div>
+                                <div class="criteria-list">
+                                    ${criteriaTags || '<span class="text-muted">Tous les critères</span>'}
+                                </div>
+                            </div>
+                            <button onclick="deleteSearch(event, ${search.id})" class="delete-btn" title="Supprimer">
+                                🗑️
+                            </button>
+                        `;
+                        container.appendChild(card);
+                    });
+
+                } catch (error) {
+                    console.error("Error loading saved searches:", error);
+                }
+            }
+
+            async function deleteSearch(event, id) {
+                event.stopPropagation(); // Prevent card click
+                if (!confirm('Êtes-vous sûr de vouloir supprimer cette recherche ?')) return;
+
+                try {
+                    const res = await fetch(`/api/recherches/${id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        loadSavedSearches();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', loadSavedSearches);
+        </script>
+
+        <style>
+            .search-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .saved-search-card {
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 16px;
+                position: relative;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+                overflow: hidden;
+            }
+
+            .saved-search-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+                border-color: var(--primary-color);
+            }
+
+            .card-content {
+                padding: 1.5rem;
+                cursor: pointer;
+            }
+
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.8rem;
+            }
+
+            .search-title {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: var(--text-color);
+            }
+
+            .search-date {
+                font-size: 0.85rem;
+                color: var(--text-muted);
+            }
+
+            .criteria-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .criteria-tag {
+                background: #f8f9fa;
+                border: 1px solid #e9ecef;
+                padding: 0.3rem 0.8rem;
+                border-radius: 50px;
+                font-size: 0.85rem;
+                color: #555;
+                font-weight: 500;
+            }
+
+            .delete-btn {
+                position: absolute;
+                top: 1.5rem;
+                right: 1.5rem;
+                background: none;
+                border: none;
+                cursor: pointer;
+                opacity: 0;
+                transition: opacity 0.2s;
+                padding: 5px;
+                border-radius: 50%;
+                z-index: 10;
+            }
+
+            .saved-search-card:hover .delete-btn {
+                opacity: 1;
+            }
+
+            .delete-btn:hover {
+                background: #fff0f0;
+            }
+
+            /* Adjust header for delete button space */
+            .card-header {
+                padding-right: 2rem;
+            }
+
+            .empty-state {
+                text-align: center;
+                padding: 4rem 2rem;
+                background: white;
+                border-radius: 16px;
+                border: 2px dashed var(--border-color);
+                color: var(--text-muted);
+            }
+        </style>
+    </div>
+</body>
+
+</html>

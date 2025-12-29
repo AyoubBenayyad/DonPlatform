@@ -10,4 +10,6 @@ public interface AnnonceRepository extends JpaRepository<Annonce, Long>, JpaSpec
 
     @org.springframework.data.jpa.repository.Query(value = "SELECT DISTINCT titre FROM annonces WHERE LOWER(titre) LIKE LOWER(CONCAT('%', :query, '%')) UNION SELECT DISTINCT mots_cles FROM annonce_mots_cles WHERE LOWER(mots_cles) LIKE LOWER(CONCAT('%', :query, '%')) LIMIT 10", nativeQuery = true)
     java.util.List<String> findSuggestions(@org.springframework.data.repository.query.Param("query") String query);
+
+    java.util.List<Annonce> findByCreateurUsernameOrderByDatePublicationDesc(String username);
 }
